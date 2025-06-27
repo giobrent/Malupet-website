@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>User Dashboard - E-Casino</title>
+  <link rel="stylesheet" href="css/dashboard.css" />
+</head>
+<body>
+  <header>
+    <h1>E-Casino Dashboard</h1>
+  </header>
+  <nav>
+    <a href="casino.html">Home</a>
+    <a href="deposit.html">Deposit</a>
+    <a href="withdraw.html">Withdraw</a>
+    <a href="login.html" onclick="logout(event)">Logout</a>
+  </nav>
+
+  <main>
+    <div class="balance" id="balance">Balance: Loading...</div>
+
+    <section class="dashboard-section">
+      <h2>Deposit History</h2>
+      <table id="depositTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Payment Method</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="3">Loading deposits...</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="dashboard-section">
+      <h2>Withdrawal History</h2>
+      <table id="withdrawalTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="2">Loading withdrawals...</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="dashboard-section">
+      <h2>Game History</h2>
+      <table id="gameHistoryTable">
+        <thead>
+          <tr>
+            <th>Date Played</th>
+            <th>Game</th>
+            <th>Amount Won</th>
+            <th>Amount Lost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="5">Loading game history...</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const userId = localStorage.getItem('userId'); // assuming userId is stored at login
+
+    if (!userId) {
+      alert('User not logged in. Redirecting to login...');
+      window.location.href = 'login.html';
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleString();
+    }
+
+    async function loadDeposits() {
+      const tbody = document.querySelector('#depositTable tbody');
+      try {
+        const res = await fetch(`http://localhost:3000/api/deposits/${userId}`);
+        const deposits = await res.json();
+        if (!deposits.length) {
+          tbody.innerHTML = '<tr><td colspan="3">No deposits found.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = deposits.map(d => `
+          <tr>
+            <td>${formatDate(d.created_at)}</td>
+            <td>${d.payment_method}</td>
+            <td>$${parseFloat(d.amount).toFixed(2)}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="3">Error loading deposits.</td></tr>';
+        console.error(err);
+      }
+    }
+
+    async function loadWithdrawals() {
+      const tbody = document.querySelector('#withdrawalTable tbody');
+      try {
+        const res = await fetch(`http://localhost:3000/api/withdrawals/${userId}`);
+        const withdrawals = await res.json();
+        if (!withdrawals.length) {
+          tbody.innerHTML = '<tr><td colspan="2">No withdrawals found.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = withdrawals.map(w => `
+          <tr>
+            <td>${formatDate(w.created_at)}</td>
+            <td>$${parseFloat(w.amount).toFixed(2)}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="2">Error loading withdrawals.</td></tr>';
+        console.error(err);
+      }
+    }
+
+    async function loadGameHistory() {
+      const tbody = document.querySelector('#gameHistoryTable tbody');
+      try {
+        const res = await fetch(`http://localhost:3000/api/game-history/${userId}`);
+        const games = await res.json();
+        if (!games.length) {
+          tbody.innerHTML = '<tr><td colspan="5">No game history found.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = games.map(g => `
+          <tr>
+            <td>${formatDate(g.date)}</td>
+            <td>${g.game_name}</td>
+            <td>${g.result}</td>
+            <td>$${parseFloat(g.amount_won).toFixed(2)}</td>
+            <td>$${parseFloat(g.amount_lost).toFixed(2)}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="5">Error loading game history.</td></tr>';
+        console.error(err);
+      }
+    }
+
+    async function loadBalance() {
+      try {
+        const res = await fetch(`http://localhost:3000/api/balance/${userId}`);
+        if (!res.ok) throw new Error('Failed to fetch balance');
+        const data = await res.json();
+        document.getElementById('balance').textContent = `Balance: $${parseFloat(data.balance).toFixed(2)}`;
+      } catch (err) {
+        document.getElementById('balance').textContent = 'Balance: Error loading';
+        console.error(err);
+      }
+    }
+
+    window.onload = () => {
+      loadBalance();
+      loadDeposits();
+      loadWithdrawals();
+      loadGameHistory();
+    };
+
+    function logout(event) {
+      event.preventDefault();
+      localStorage.removeItem('userId');
+      alert("Logged out!");
+      window.location.href = 'login.html';
+    }
+  </script>
+</body>
+</html>

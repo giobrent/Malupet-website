@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Deposit | PALDO</title>
+  <link rel="stylesheet" href="css/deposit.css" />
+  <style>
+    /* small inline style to hide fields initially */
+    .payment-details {
+      display: none;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Deposit Funds</h1>
+
+    <form id="depositForm">
+      <label>Select Payment Method:</label>
+
+      <label>
+        <input type="radio" name="paymentMethod" value="paypal" />
+        PayPal
+      </label>
+      <label>
+        <input type="radio" name="paymentMethod" value="creditcard" />
+        Credit Card
+      </label>
+      <label>
+        <input type="radio" name="paymentMethod" value="gcash" />
+        GCash
+      </label>
+
+      <!-- PayPal details -->
+      <div id="paypalDetails" class="payment-details">
+        <label for="paypalEmail">PayPal Email</label>
+        <input type="email" id="paypalEmail" name="paypalEmail" placeholder="your-paypal-email@example.com" />
+      </div>
+
+      <!-- Credit Card details -->
+      <div id="creditCardDetails" class="payment-details">
+        <label for="cardNumber">Card Number</label>
+        <input type="text" id="cardNumber" name="cardNumber" maxlength="19" placeholder="xxxx xxxx xxxx xxxx" />
+        <label for="expiryDate">Expiry Date</label>
+        <input type="month" id="expiryDate" name="expiryDate" />
+        <label for="cvv">CVV</label>
+        <input type="password" id="cvv" name="cvv" maxlength="4" placeholder="123" />
+      </div>
+
+      <!-- GCash details -->
+      <div id="gcashDetails" class="payment-details">
+        <label for="gcashNumber">GCash Mobile Number</label>
+        <input type="tel" id="gcashNumber" name="gcashNumber" placeholder="09XXXXXXXXX" maxlength="11" />
+      </div>
+
+      <label for="amount">Amount</label>
+      <input type="number" id="amount" name="amount" min="1" placeholder="Enter amount to deposit" required />
+
+      <button type="submit">Deposit</button>
+    </form>
+
+    <p class="error-message" id="error"></p>
+    <p class="success-message" id="success"></p>
+  </div>
+
+ <script>
+  const paymentRadios = document.querySelectorAll('input[name="paymentMethod"]');
+  const paypalDetails = document.getElementById('paypalDetails');
+  const creditCardDetails = document.getElementById('creditCardDetails');
+  const gcashDetails = document.getElementById('gcashDetails');
+
+  paymentRadios.forEach((radio) => {
+    radio.addEventListener('change', () => {
+      paypalDetails.style.display = 'none';
+      creditCardDetails.style.display = 'none';
+      gcashDetails.style.display = 'none';
+
+      if (radio.value === 'paypal') {
+        paypalDetails.style.display = 'block';
+      } else if (radio.value === 'creditcard') {
+        creditCardDetails.style.display = 'block';
+      } else if (radio.value === 'gcash') {
+        gcashDetails.style.display = 'block';
+      }
+    });
+  });
+
+  const form = document.getElementById('depositForm');
+  const errorEl = document.getElementById('error');
+  const successEl = document.getElementById('success');
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    errorEl.textContent = '';
+    successEl.textContent = '';
+
+    const paymentMethod = form.paymentMethod.value;
+    const amount = form.amount.value.trim();
+
+    if (!paymentMethod) {
+      errorEl.textContent = 'Please select a payment method.';
+      return;
+    }
+
+    if (!amount || amount <= 0) {
+      errorEl.textContent = 'Please enter a valid deposit amount.';
+      return;
+    }
+
+    let paymentDetails = {};
+
+    if (paymentMethod === 'paypal') {
+      const email = form.paypalEmail.value.trim();
+      if (!email) {
+        errorEl.textContent = 'Please enter your PayPal email.';
+        return;
+      }
+      paymentDetails.email = email;
+
+    } else if (paymentMethod === 'creditcard') {
+      const cardNum = form.cardNumber.value.trim();
+      const expiry = form.expiryDate.value;
+      const cvv = form.cvv.value.trim();
+      if (!cardNum || !expiry || !cvv) {
+        errorEl.textContent = 'Please fill out all credit card details.';
+        return;
+      }
+      paymentDetails.cardNumber = cardNum;
+      paymentDetails.expiryDate = expiry;
+      paymentDetails.cvv = cvv;
+
+    } else if (paymentMethod === 'gcash') {
+      const gcashNum = form.gcashNumber.value.trim();
+      if (!gcashNum) {
+        errorEl.textContent = 'Please enter your GCash mobile number.';
+        return;
+      }
+      paymentDetails.gcashNumber = gcashNum;
+    }
+
+    // Get actual logged-in userId from localStorage
+    const userId = localStorage.getItem('userId');
+
+    if (!userId) {
+      errorEl.textContent = 'You must be logged in to deposit.';
+      return;
+    }
+
+    fetch('http://localhost:3000/api/deposit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        payment_method: paymentMethod,
+        amount: parseFloat(amount),
+        payment_details: paymentDetails
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        successEl.textContent = 'Deposit successful! Redirecting to casino...';
+        form.reset();
+        paypalDetails.style.display = 'none';
+        creditCardDetails.style.display = 'none';
+        gcashDetails.style.display = 'none';
+
+        // Redirect after 3 seconds
+        setTimeout(() => {
+          window.location.href = 'casino.html';
+        }, 3000);
+      } else {
+        errorEl.textContent = data.error || 'Deposit failed.';
+      }
+    })
+    .catch(err => {
+      console.error('Error:', err);
+      errorEl.textContent = 'Server error. Please try again later.';
+    });
+  });
+</script>
+</body>
+</html>

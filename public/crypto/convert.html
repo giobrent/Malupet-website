@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Token Exchange</title>
+   <link rel="stylesheet" href="css/convert.css" />
+</head>
+<body>
+
+  <div class="navbar">
+    <div class="brand">HypoCrypto Exchange</div>
+  </div>
+
+  <div class="container">
+    <h2>Exchange Center</h2>
+
+    <div class="balance-section">
+      <div class="balance-box">
+        <h3>Coin Balance</h3>
+        <p id="coinBalance">0</p>
+      </div>
+      <div class="balance-box">
+        <h3>Token Balance</h3>
+        <p id="tokenBalance">0</p>
+      </div>
+      <div class="balance-box">
+        <h3>₱ Main Balance</h3>
+        <p id="mainBalance">₱0.00</p>
+      </div>
+    </div>
+
+    <div id="price-display">Current Token Value: ₱<span id="current-token-price">--</span></div>
+
+    <canvas id="priceChart" width="100%" height="200"></canvas>
+
+    <div class="exchange-section">
+
+      <div class="exchange-box">
+        <h3>Exchange Coins to Token</h3>
+        <label for="coins">Enter Coins (500 coins = 0.25 token):</label>
+        <input type="number" id="coin-input" placeholder="e.g., 1000">
+        <button id="convert-to-token">Convert</button>
+      </div>
+
+      <div class="exchange-box">
+        <h3>Exchange Token to Peso</h3>
+        <label for="tokens">Enter Token:</label>
+        <input type="number" id="token-input" placeholder=>
+        <button id="convert-to-peso">Convert</button>
+        <div class="limit-note">Daily limit: 100 tokens</div>
+      </div>
+
+      <div class="exchange-box">
+        <h3>Exchange Peso to Token</h3>
+        <label for="tokens">Enter Amount:</label>
+        <input type="number" id="pesoInput" placeholder="Enter Peso Amount">
+        <button id="convertPesoBtn">Convert</button>
+      </div>
+
+      <div class="exchange-box">
+      <h3>Send Token to Crypto Wallet (MetaMask)</h3>
+      <label for="metamask-token-input">Enter Token Amount:</label>
+      <input type="number" id="metamask-token-input" placeholder="e.g., 1.5" />
+      <button id="convert-to-crypto">Send to Wallet</button>
+      <div class="exchange-box">
+      <h3>Connect MetaMask Wallet</h3>
+      <button id="connectWallet">Connect to Wallet</button>
+      <p id="connectedWallet" style="font-size: 14px; color: green;"></p>
+      <p id="walletMessage" style="font-size: 13px; color: red;"></p>
+    </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const userId = localStorage.getItem('user_id');
+    document.addEventListener('DOMContentLoaded', () => {
+
+    if (!userId) {
+      document.getElementById('coinBalance').textContent = 'No user';
+      return;
+    }
+
+    const coinBalanceEl = document.getElementById('coinBalance');
+    const tokenBalanceEl = document.getElementById('tokenBalance');
+    const mainBalanceEl = document.getElementById('mainBalance');
+
+    const convertToTokenBtn = document.getElementById('convert-to-token');
+    const convertToPesoBtn = document.getElementById('convert-to-peso');
+
+    // 🔹 Define global variable for token price
+    let currentPrice = 0;
+
+    // Load balances
+    function refreshBalances() {
+      fetch(`http://localhost:3000/api/crypto-coinbalance/${userId}`)
+        .then(res => res.json())
+        .then(data => {
+          coinBalanceEl.innerText = `${data.coin_balance} coins`;
+        });
+
+      fetch(`http://localhost:3000/api/crypto-tokenbalance/${userId}`)
+        .then(res => res.json())
+        .then(data => {
+          tokenBalanceEl.innerText = parseFloat(data.token_balance).toFixed(2);
+        });
+
+      fetch(`http://localhost:3000/api/crypto-balance/${userId}`)
+        .then(res => res.json())
+        .then(data => {
+          mainBalanceEl.innerText = `₱${parseFloat(data.balance).toFixed(2)}`;
+        });
+    }
+
+    refreshBalances(); // Initial load
+
+    // Coin → Token
+    convertToTokenBtn.addEventListener('click', () => {
+      const coinInput = parseInt(document.getElementById('coin-input').value);
+      if (isNaN(coinInput) || coinInput < 500) {
+        alert('Please enter at least 500 coins to convert.');
+        return;
+      }
+
+      fetch('http://localhost:3000/api/convert-coin-to-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, coin_amount: coinInput })
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert(data.message || 'Conversion completed.');
+          refreshBalances();
+        })
+        .catch(() => alert('Error processing conversion.'));
+    });
+
+
+
+    // Token → Peso
+    convertToPesoBtn.addEventListener('click', () => {
+      const tokenInput = parseFloat(document.getElementById('token-input').value);
+      if (isNaN(tokenInput) || tokenInput <= 0) {
+        alert('Enter a valid token amount.');
+        return;
+      }
+
+      if (tokenInput > 100) {
+        alert('Daily limit exceeded. Max 100 tokens per day.');
+        return;
+      }
+
+      if (!currentPrice || currentPrice <= 0) {
+        alert('Token price not loaded yet. Please wait.');
+        return;
+      }
+
+      fetch('http://localhost:3000/api/convert-token-to-peso', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          token_amount: tokenInput,
+          token_price: currentPrice // ✅ uses live token price
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert(data.message || 'Exchange successful.');
+          refreshBalances();
+        })
+        .catch(() => alert('Error during token exchange.'));
+    });
+
+    // ----- Token Price Chart -----
+    let priceChart;
+    let priceData = {
+      labels: [],
+      datasets: [{
+        label: 'Token Price (₱)',
+        data: [],
+        borderColor: '#4bc0c0',
+        fill: false,
+        tension: 0.3
+      }]
+    };
+
+    const config = {
+      type: 'line',
+      data: priceData,
+      options: {
+        responsive: true,
+        plugins: { legend: { display: true } },
+        scales: {
+          x: { title: { display: true, text: 'Time' } },
+          y: { beginAtZero: true, title: { display: true, text: '₱ Price' } }
+        }
+      }
+    };
+
+    function initChart() {
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      priceChart = new Chart(ctx, config);
+    }
+
+    // Fetch Token Price
+    async function fetchTokenPriceAndUpdate() {
+      try {
+        const response = await fetch('http://localhost:3000/api/token-price');
+        const data = await response.json();
+        const price = parseFloat(data.price).toFixed(2);
+
+        currentPrice = parseFloat(price); // ✅ save to global
+        const now = new Date().toLocaleTimeString();
+
+        document.getElementById('current-token-price').textContent = price;
+
+        priceData.labels.push(now);
+        priceData.datasets[0].data.push(price);
+        if (priceData.labels.length > 10) {
+          priceData.labels.shift();
+          priceData.datasets[0].data.shift();
+        }
+        priceChart.update();
+      } catch (error) {
+        console.error('Failed to fetch token price:', error);
+      }
+    }
+
+    // Fetch User Crypto Balance
+    async function fetchUserBalance() {
+      try {
+        const res = await fetch(`http://localhost:3000/api/crypto-balance/${userId}`);
+        const data = await res.json();
+        mainBalanceEl.textContent = `₱${parseFloat(data.balance).toFixed(2)}`;
+      } catch (err) {
+        console.error("Failed to fetch balance:", err);
+      }
+    }
+
+    // Initialize
+    window.onload = () => {
+      initChart();
+      fetchTokenPriceAndUpdate();
+      fetchUserBalance();
+      setInterval(fetchTokenPriceAndUpdate, 10000);
+      setInterval(fetchUserBalance, 10000);
+    };
+  });
+ 
+</script>
+<script>
+document.getElementById('convertPesoBtn').addEventListener('click', () => {
+  const pesoInput = parseFloat(document.getElementById('pesoInput').value);
+
+  if (!userId || isNaN(pesoInput) || pesoInput <= 0) {
+    alert('Invalid user or amount.');
+    return;
+  }
+
+  fetch('http://localhost:3000/api/convert-peso-to-token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, peso_amount: pesoInput })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(`Successfully converted! New Token Balance: ${data.token_balance}, New Peso Balance: ${data.balance}`);
+        refreshBalances();  // Ensure this function is defined to update UI
+      } else {
+        alert(data.error || 'Conversion failed.');
+      }
+    })
+    
+});
+</script>
+
+</script>
+
+<script>
+  const convertToCryptoBtn = document.getElementById("convert-to-crypto");
+
+  convertToCryptoBtn.addEventListener("click", async () => {
+    const tokenAmount = parseFloat(document.getElementById("metamask-token-input").value);
+    if (isNaN(tokenAmount) || tokenAmount <= 0) {
+      alert("Please enter a valid token amount.");
+      return;
+    }
+
+    if (!window.ethereum) {
+      alert("MetaMask not found. Please install it first.");
+      return;
+    }
+
+    try {
+      const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+      const walletAddress = accounts[0];
+
+      const res = await fetch("http://localhost:3000/api/send-token-to-crypto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,  // ⚠️ Make sure this `userId` is defined globally or retrieved from session/local storage
+          token_amount: tokenAmount,
+          wallet_address: walletAddress
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("Token transfer to MetaMask wallet initiated.");
+      } else {
+        alert(data.message || "Failed to process token transfer.");
+      }
+    } catch (err) {
+      console.error("MetaMask error:", err);
+      alert("MetaMask connection failed.");
+    }
+  });
+  
+  
+</script>
+
+<script>
+  const connectWalletBtn = document.getElementById("connectWallet");
+  const walletMessage = document.getElementById("walletMessage");
+  const connectedWalletEl = document.getElementById("connectedWallet");
+
+  connectWalletBtn.addEventListener("click", async () => {
+    if (typeof window.ethereum !== "undefined") {
+      try {
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        const walletAddress = accounts[0];
+        connectedWalletEl.textContent = `Connected: ${walletAddress}`;
+        walletMessage.textContent = "";
+
+        // Optional: Autofill wallet input if exists
+        const walletInput = document.getElementById("walletAddress");
+        if (walletInput) {
+          walletInput.value = walletAddress;
+        }
+
+      } catch (err) {
+        walletMessage.textContent = "Wallet connection was rejected.";
+        console.error("User rejected connection:", err);
+      }
+    } else {
+      alert("MetaMask not found. Please install the extension.");
+    }
+  });
+</script>
+
+</body>
+</html>

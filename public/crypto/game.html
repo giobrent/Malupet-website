@@ -1,0 +1,193 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Crypto Tap Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0d0d0d;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background-color: #1e1e1e;
+      padding: 40px 30px;
+      border-radius: 20px;
+      box-shadow: 0 0 40px #00ffcc88, 0 0 80px #00ffcc44;
+      border: 2px solid #00ffcc;
+      text-align: center;
+      width: 90%;
+      max-width: 400px;
+      animation: pulseGlow 2.5s infinite;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+      color: #00ffcc;
+      text-shadow: 0 0 15px #00ffcc, 0 0 30px #00ffcc;
+    }
+
+    .balance {
+      font-size: 1.8rem;
+      margin: 20px 0;
+    }
+
+    .tap-icon {
+      width: 120px;
+      margin: 20px 0;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .tap-icon:active {
+      transform: scale(1.1);
+    }
+
+    .tap-amount {
+      font-size: 1.5rem;
+      color: #00ffcc;
+      animation: fadeUp 0.8s ease-out forwards;
+      position: absolute;
+      pointer-events: none;
+    }
+
+    @keyframes fadeUp {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-30px); }
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 25px;
+      background-color: #00ffcc;
+      color: #111;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1rem;
+      box-shadow: 0 0 15px #00ffcc;
+      transition: 0.3s ease;
+    }
+
+    button:hover {
+      box-shadow: 0 0 30px #00ffcc, 0 0 60px #00ffcc;
+      background-color: #00e6b8;
+    }
+
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 20px #00ffcc33, 0 0 40px #00ffcc11; }
+      50% { box-shadow: 0 0 40px #00ffcc66, 0 0 80px #00ffcc33; }
+      100% { box-shadow: 0 0 20px #00ffcc33, 0 0 40px #00ffcc11; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Hypo Coin</h1>
+  <div class="balance">Coins: <span id="coinBalance">0</span></div>
+  <img src="icon/icon.png" id="coin" class="tap-icon" alt="Coin" />
+  <div>
+    <button id="upgradeBtn">Upgrade (+1/tap) - Cost: <span id="upgradeCost">50</span></button>
+  </div>
+  <div style="margin-top: 20px;">
+    <button onclick="location.href='crypto.html'">Back</button>
+  </div>
+</div>
+
+<script>
+  const userId = localStorage.getItem("user_id");
+
+if (!userId || userId === "null" || userId === "undefined") {
+  alert("You're not logged in. Redirecting to login...");
+  window.location.href = "login.html";
+}
+
+  let coins = 0;
+  let coinsPerTap = 1;
+  let upgradeCost = 50;
+
+  const coinBalance = document.getElementById("coinBalance");
+  const upgradeBtn = document.getElementById("upgradeBtn");
+  const upgradeCostEl = document.getElementById("upgradeCost");
+  const coin = document.getElementById("coin");
+
+  function animateCoinChange(start, end, duration = 500) {
+    let range = end - start;
+    let startTime = null;
+
+    function animate(timestamp) {
+      if (!startTime) startTime = timestamp;
+      let progress = timestamp - startTime;
+      let current = Math.floor(start + (range * (progress / duration)));
+      coinBalance.textContent = current > end ? end : current;
+      if (progress < duration) requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  function saveProgress() {
+    fetch('http://localhost:3000/api/crypto-coinbalance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        coin_balance: coins,
+        upgrade_level: coinsPerTap
+      })
+    });
+  }
+
+  async function loadProgress() {
+    const res = await fetch(`http://localhost:3000/api/crypto-coinbalance/${userId}`);
+    const data = await res.json();
+    coins = data.coin_balance || 0;
+    coinsPerTap = data.upgrade_level || 1;
+    upgradeCost = 50 * Math.pow(1.5, coinsPerTap - 1);
+    coinBalance.textContent = coins;
+    upgradeCostEl.textContent = Math.floor(upgradeCost);
+  }
+
+  coin.addEventListener("click", (e) => {
+    coins += coinsPerTap;
+
+    const floating = document.createElement("div");
+    floating.className = "tap-amount";
+    floating.style.left = `${e.clientX - 10}px`;
+    floating.style.top = `${e.clientY - 30}px`;
+    floating.textContent = `+${coinsPerTap}`;
+    document.body.appendChild(floating);
+    setTimeout(() => floating.remove(), 800);
+
+    animateCoinChange(Number(coinBalance.textContent), coins);
+    saveProgress();
+  });
+
+  upgradeBtn.addEventListener("click", () => {
+    if (coins >= upgradeCost) {
+      coins -= upgradeCost;
+      coinsPerTap += 1;
+      upgradeCost = Math.floor(upgradeCost * 1.5);
+      upgradeCostEl.textContent = upgradeCost;
+      animateCoinChange(Number(coinBalance.textContent), coins);
+      saveProgress();
+    } else {
+      alert("Not enough coins!");
+    }
+  });
+
+  // Initial load
+  loadProgress();
+</script>
+
+</body>
+</html>

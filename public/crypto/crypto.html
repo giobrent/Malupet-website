@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HypoCrypto Dashboard</title>
+  <link rel="stylesheet" href="css/crypto.css" />
+
+  <!-- ✅ Load Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- ✅ Load Web3.js -->
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+</head>
+<body>
+
+  <div class="navbar">
+    <div class="brand">HypoCrypto</div>
+    <div class="nav-buttons">
+      <button onclick="navigate('dashboard.html')">Dashboard</button>
+      <button onclick="navigate('convert.html')">Convert</button>
+      <button onclick="navigate('game.html')">Play</button>
+      <button onclick="navigate('report.html')">Report</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="chart-container"><h2>Bitcoin (BTC)</h2><canvas id="btcChart"></canvas></div>
+    <div class="chart-container"><h2>Ethereum (ETH)</h2><canvas id="ethChart"></canvas></div>
+    <div class="chart-container"><h2>Solana (SOL)</h2><canvas id="solChart"></canvas></div>
+    <div class="chart-container"><h2>Binance Coin (BNB)</h2><canvas id="bnbChart"></canvas></div>
+    <div class="chart-container"><h2>HypoToken</h2><canvas id="hypoChart"></canvas></div>
+  </div>
+
+  <!-- ✅ Wallet Connect Button -->
+  <div style="text-align: center; margin-top: 30px;">
+    <button onclick="connectWallet()">Connect Wallet</button>
+    <p>Wallet: <span id="walletAddress">Not Connected</span></p>
+  </div>
+
+  <script>
+    const userId = localStorage.getItem("user_id"); // Make sure this is set after login
+    let isConnecting = false;
+
+
+    // Navigation + Logout
+    function navigate(page) {
+      window.location.href = page;
+    }
+
+    function logout() {
+      window.location.href = "login.html";
+    }
+
+    // ✅ Connect Wallet Function
+   let web3;
+   let userAccount;
+
+async function connectWallet() {
+  if (typeof window.ethereum !== 'undefined') {
+    try {
+      web3 = new Web3(window.ethereum);
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const accounts = await web3.eth.getAccounts();
+      userAccount = accounts[0];
+
+      document.getElementById("walletAddress").innerText = userAccount;
+      console.log("✅ Wallet connected:", userAccount);
+
+      // 🔁 Send to backend to save
+      const userId = localStorage.getItem("user_id"); // adjust if you store user ID in sessionStorage or a cookie
+
+      if (!userId) {
+        alert("User ID not found in localStorage.");
+        return;
+      }
+
+      const res = await fetch("http://localhost:3000/api/save-wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, wallet_address: userAccount })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert("Wallet connected and saved successfully.");
+      } else {
+        alert("Failed to save wallet address.");
+      }
+
+    } catch (err) {
+      alert("Connection rejected.");
+      console.error(err);
+    }
+  } else {
+    alert("MetaMask is not installed.");
+  }
+}
+
+
+    // Chart.js logic
+    const chartData = [
+      { id: 'btcChart', label: 'BTC', color: '#f7931a', data: [70500, 70200, 71000, 70750, 70900, 71500, 71200] },
+      { id: 'ethChart', label: 'ETH', color: '#3c3c3d', data: [3900, 3880, 3910, 3925, 3950, 3930, 3945] },
+      { id: 'solChart', label: 'SOL', color: '#66f9df', data: [165, 162, 166, 168, 170, 169, 167] },
+      { id: 'bnbChart', label: 'BNB', color: '#f0b90b', data: [600, 602, 605, 608, 610, 609, 611] },
+      { id: 'hypoChart', label: 'HTK', color: '#00ffcc', data: [1.2, 1.15, 1.18, 1.22, 1.25, 1.3, 1.28] }
+    ];
+
+    chartData.forEach(({ id, label, color, data }) => {
+      const ctx = document.getElementById(id).getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          datasets: [{
+            label,
+            data,
+            borderColor: color,
+            backgroundColor: 'transparent',
+            tension: 0.3,
+            pointRadius: 3,
+            pointBackgroundColor: color
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { ticks: { color: '#ccc' } },
+            y: { ticks: { color: '#ccc' } }
+          },
+          plugins: {
+            legend: {
+              labels: { color: '#fff' }
+            }
+          }
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

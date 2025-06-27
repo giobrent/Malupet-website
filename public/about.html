@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>About Us - NeonPlay</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Segoe+UI&display=swap');
+
+  /* Background gradient with subtle animation */
+  body {
+    margin: 0;
+    padding: 40px 20px;
+    background: linear-gradient(270deg, #0d0d0d, #002f2f, #004d4d, #0d0d0d);
+    background-size: 800% 800%;
+    animation: gradientShift 20s ease infinite;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #00ffcc;
+    text-align: center;
+    overflow-x: hidden;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%;}
+    50% { background-position: 100% 50%;}
+    100% { background-position: 0% 50%;}
+  }
+
+  /* Container fade-in */
+  main {
+    max-width: 850px;
+    margin: 0 auto;
+    text-align: left;
+    background: rgba(0, 255, 204, 0.05);
+    border-radius: 20px;
+    box-shadow:
+      0 0 10px #00ffc3cc,
+      0 0 30px #00ffc3bb,
+      inset 0 0 40px #00ffcc66;
+    padding: 40px 50px;
+    backdrop-filter: blur(10px);
+    animation: fadeIn 1.5s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+
+  /* Neon header */
+  header {
+    background: linear-gradient(90deg, #00ffc3, #005f73);
+    padding: 30px 40px;
+    border-radius: 15px;
+    box-shadow:
+      0 0 30px #00ffc3,
+      0 0 60px #00ffc3,
+      0 0 80px #00ffc3;
+    margin-bottom: 60px;
+  }
+  header h1 {
+    margin: 0;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 3.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #00fff0;
+    text-shadow:
+      0 0 10px #00ffc3,
+      0 0 25px #00ffc3,
+      0 0 40px #00ffcc,
+      0 0 70px #00ffcc;
+  }
+
+  h2 {
+    font-size: 2.5rem;
+    margin-bottom: 25px;
+    color: #00fff0;
+    text-shadow:
+      0 0 8px #00ffc3,
+      0 0 20px #00ffc3bb;
+    border-bottom: 2px solid #00ffc3;
+    padding-bottom: 8px;
+  }
+
+  p {
+    font-size: 1.3rem;
+    line-height: 1.75;
+    margin-bottom: 30px;
+    color: #aaffffdd;
+    text-shadow: 0 0 5px #00ffc3aa;
+  }
+
+  .highlight {
+    color: #00ffe0;
+    font-weight: 700;
+    text-shadow:
+      0 0 10px #00fff0,
+      0 0 25px #00ffc3,
+      0 0 40px #00ffcc;
+  }
+
+  footer {
+    margin-top: 70px;
+    font-size: 1rem;
+    color: #008075aa;
+    text-shadow: none;
+    letter-spacing: 0.05em;
+  }
+
+  /* Responsive tweaks */
+  @media (max-width: 720px) {
+    main {
+      padding: 30px 20px;
+    }
+    header h1 {
+      font-size: 2.8rem;
+    }
+    h2 {
+      font-size: 1.8rem;
+      margin-bottom: 18px;
+    }
+    p {
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>About Our Website</h1>
+</header>
+
+<main>
+  <h2>Welcome to Our E-Casino Platform</h2>
+  <p>
+    At <span class="highlight">NeonPlay</span>, we bring the thrill of classic and modern casino games right to your screen.
+    Our platform is designed to deliver an exciting, fair, and secure gaming experience for all players.
+  </p>
+
+  <h2>Our Mission</h2>
+  <p>
+    We aim to create an engaging environment where users can enjoy games like slots, dice, roulette, blackjack, and more, all
+    with a sleek, neon-lit interface that’s easy to navigate and fun to use.
+  </p>
+
+  <h2>Why Choose Us?</h2>
+  <p>
+    - <span class="highlight">Secure transactions:</span> Your deposits and withdrawals are protected with industry-standard encryption.<br />
+    - <span class="highlight">Fair play:</span> Our games use verified random number generators to ensure every game is fair and transparent.<br />
+    - <span class="highlight">Responsive design:</span> Play anytime, anywhere on desktop, tablet, or mobile devices.<br />
+    - <span class="highlight">24/7 Support:</span> Our team is always here to help with any questions or issues.
+  </p>
+
+  <h2>Get Started</h2>
+  <p>
+    Ready to test your luck? Navigate to the game lobby to explore our exciting lineup of games. Whether you're a seasoned player or just getting started, NeonPlay is your go-to destination for endless fun.
+  </p>
+</main>
+
+<footer>
+  &copy; 2025 PALDO. All rights reserved.
+</footer>
+
+</body>
+</html>

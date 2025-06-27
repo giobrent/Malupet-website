@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Crypto Deposits</title>
+  <link rel="stylesheet" href="css/deposits.css" />
+</head>
+<body>
+  <div class="navbar">
+    <div class="brand">Crypto Deposit</div>
+    <div class="nav-buttons">
+      <button onclick="location.href='dashboard.html'">Back to Dashboard</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Crypto Deposit</h1>
+    <button id="connectWallet">Connect MetaMask</button>
+    <p id="walletAddress"></p>
+
+    <form id="depositForm">
+      <label for="amount">Amount (₱):</label>
+      <input type="number" id="amount" name="amount" required />
+
+      <label for="method">Select Method:</label>
+      <select id="method" name="method" required>
+        <option value="">-- Choose --</option>
+        <option value="GCash">GCash</option>
+        <option value="PayPal">PayPal</option>
+      </select>
+
+      <div id="extraFields"></div>
+
+      <button type="submit">Submit Deposit</button>
+      <div class="message" id="message"></div>
+    </form>
+
+    <div class="history">
+      <h3>Deposit History</h3>
+      <ul id="historyList"></ul>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+
+<script>
+  let web3;
+  let selectedAccount;
+  let isConnecting = false;
+
+
+document.getElementById("connectWallet").addEventListener("click", async () => {
+  if (typeof window.ethereum !== "undefined") {
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      selectedAccount = accounts[0];
+      web3 = new Web3(window.ethereum);
+      document.getElementById("walletAddress").textContent = selectedAccount;
+      console.log("Wallet connected:", selectedAccount);
+    } catch (err) {
+      console.error("User rejected wallet connection", err);
+      alert("Wallet connection was rejected.");
+    }
+  } else {
+    alert("MetaMask or Web3 wallet not found. Please install one.");
+  }
+});
+
+  const depositForm = document.getElementById("depositForm");
+  const methodSelect = document.getElementById("method");
+  const extraFields = document.getElementById("extraFields");
+  const message = document.getElementById("message");
+  const historyList = document.getElementById("historyList");
+
+  const user_id = localStorage.getItem("user_id");
+
+  // Handle method change
+  methodSelect.addEventListener("change", () => {
+    const method = methodSelect.value;
+    extraFields.innerHTML = "";
+
+    if (method === "GCash") {
+      extraFields.innerHTML = `
+        <label for="gcashNumber">GCash Number:</label>
+        <input type="text" id="gcashNumber" name="gcashNumber" required />
+      `;
+    } else if (method === "PayPal") {
+      extraFields.innerHTML = `
+        <label for="paypalEmail">PayPal Email:</label>
+        <input type="email" id="paypalEmail" name="paypalEmail" required />
+      `;
+    }
+  });
+
+  // Submit deposit
+  depositForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const amount = parseFloat(document.getElementById("amount").value);
+    const method = methodSelect.value;
+    const identifier =
+      method === "GCash"
+        ? document.getElementById("gcashNumber").value
+        : document.getElementById("paypalEmail").value;
+
+    if (!user_id) {
+      message.textContent = "User not logged in.";
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:3000/api/crypto-deposits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id, amount, method, identifier, wallet: selectedAccount || null }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        message.textContent = "Deposit submitted successfully.";
+        depositForm.reset();
+        extraFields.innerHTML = "";
+        fetchDepositHistory();
+      } else {
+        message.textContent = data.message || "Deposit failed.";
+      }
+    } catch (err) {
+      console.error("Error submitting deposit:", err);
+      message.textContent = "Server error.";
+    }
+  });
+
+  // Fetch deposit history
+  async function fetchDepositHistory() {
+    if (!user_id) return;
+
+    try {
+      const res = await fetch(`http://localhost:3000/api/crypto-deposits/${user_id}`);
+      const history = await res.json();
+
+      historyList.innerHTML = "";
+      if (Array.isArray(history) && history.length > 0) {
+        history.forEach((entry) => {
+          const li = document.createElement("li");
+          li.textContent = `₱${entry.amount} via ${entry.method} (${entry.identifier}) on ${new Date(entry.date).toLocaleString()}`;
+          historyList.appendChild(li);
+        });
+      } else {
+        historyList.innerHTML = "<li>No deposit history found.</li>";
+      }
+    } catch (err) {
+      console.error("Error loading history:", err);
+      historyList.innerHTML = "<li>Error loading history.</li>";
+    }
+  }
+
+  // Load deposit history on page load
+  window.addEventListener("DOMContentLoaded", fetchDepositHistory);
+</script>
+
+</body>
+</html>

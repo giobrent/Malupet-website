@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0d0d0d;
+      color: #fff;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #1e1e1e;
+      padding: 20px 30px;
+      box-shadow: 0 0 40px #00ffcc88, 0 0 80px #00ffcc44;
+      border-bottom: 2px solid #00ffcc;
+      animation: pulseGlow 2.5s infinite;
+    }
+
+    .brand {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #00ffcc;
+      text-shadow: 0 0 15px #00ffcc, 0 0 30px #00ffcc;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .navbar button {
+      background-color: #00ffcc;
+      color: #111;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1rem;
+      box-shadow: 0 0 15px #00ffcc;
+      transition: 0.3s ease;
+    }
+
+    .navbar button:hover {
+      background-color: #00e6b8;
+      box-shadow: 0 0 30px #00ffcc, 0 0 60px #00ffcc;
+    }
+
+    .content {
+      padding: 30px 50px;
+    }
+
+    .section {
+      margin-bottom: 40px;
+      background-color: #1e1e1e;
+      border: 2px solid #00ffcc;
+      border-radius: 15px;
+      box-shadow: 0 0 40px #00ffcc88, 0 0 80px #00ffcc44;
+      padding: 30px;
+      animation: pulseGlow 2.5s infinite;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #00ffcc;
+      text-shadow: 0 0 15px #00ffcc, 0 0 30px #00ffcc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      color: #00ffcc;
+    }
+
+    th, td {
+      padding: 12px;
+      border: 1px solid #00ffcc;
+      text-align: center;
+    }
+
+    th {
+      background-color: #111;
+    }
+
+    tr:nth-child(even) {
+      background-color: #222;
+    }
+
+    @keyframes pulseGlow {
+      0% {
+        box-shadow: 0 0 20px #00ffcc33, 0 0 40px #00ffcc11;
+      }
+      50% {
+        box-shadow: 0 0 40px #00ffcc66, 0 0 80px #00ffcc33;
+      }
+      100% {
+        box-shadow: 0 0 20px #00ffcc33, 0 0 40px #00ffcc11;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="navbar">
+    <div class="brand">Admin Dashboard</div>
+    <div class="nav-buttons">
+      <button onclick="location.href='login.html'">Logout</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <div class="section">
+      <h2>User Reports</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Report ID</th>
+            <th>User</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="reportTablebody"></tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>All Transactions</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Transaction ID</th>
+            <th>User</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tbody id="adminTransactionBody"></tbody>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Withdrawal History</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Withdrawal ID</th>
+            <th>User</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tbody id="withdrawalsTableBody"></tbody>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Deposit History</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Deposit ID</th>
+            <th>User</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        
+          <tbody id="depositsTablebody"></tbody>
+        
+      </table>
+    </div>
+
+  </div>
+  <script>
+  async function loadAllReports() {
+    const tbody = document.getElementById('reportTablebody');
+    if (!tbody) {
+      console.error('Could not find #reportTablebody');
+      return;
+    }
+    tbody.innerHTML = ''; // clear loading row
+
+    try {
+      const res = await fetch('http://localhost:3000/api/crypto-report');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { success, reports } = await res.json();
+
+      if (success && reports.length) {
+        reports.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${r.id}</td>
+            <td>${r.user_id}</td>
+            <td>${r.type}</td>
+            <td>${r.description}</td>
+            <td>${r.date}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } else {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="5">No reports found.</td>`;
+        tbody.appendChild(tr);
+      }
+    } catch (err) {
+      console.error('Error loading reports:', err);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="5">Failed to load reports.</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadAllReports);
+
+  document.addEventListener('DOMContentLoaded', () => {
+  fetch('http://localhost:3000/api/admin/transaction-history')
+    .then(res => res.json())
+    .then(data => {
+      const tbody = document.getElementById('adminTransactionBody');
+      tbody.innerHTML = '';
+
+      if (!data.success || data.transactions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4">No transactions found.</td></tr>`;
+        return;
+      }
+
+      data.transactions.forEach(tx => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${tx.transaction_id}</td>
+          <td>${tx.user}</td>
+          <td>${tx.type.replace(/_/g, ' ')}</td>
+          <td>₱${parseFloat(tx.amount).toFixed(2)}</td>
+          <td>${new Date(tx.date).toLocaleString()}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    })
+    .catch(err => {
+      console.error('Error loading transactions:', err);
+      const tbody = document.getElementById('adminTransactionBody');
+      tbody.innerHTML = `<tr><td colspan="4">Failed to load transactions.</td></tr>`;
+    });
+});
+
+async function loadAllWithdrawals() {
+    try {
+      const res = await fetch('http://localhost:3000/api/admin/withdrawal-history');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { success, withdrawals } = await res.json();
+
+      const tbody = document.getElementById('withdrawalsTableBody');
+      tbody.innerHTML = '';
+
+      if (success && withdrawals.length) {
+        withdrawals.forEach(w => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${w.withdrawal_id}</td>
+            <td>${w.user}</td>
+            <td>₱${parseFloat(w.amount).toFixed(2)}</td>
+            <td>${w.status}</td>
+            <td>${new Date(w.date).toLocaleString()}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      } else {
+        tbody.innerHTML = `<tr><td colspan="5">No withdrawal history found.</td></tr>`;
+      }
+
+    } catch (err) {
+      console.error('Error loading withdrawals:', err);
+      const tbody = document.getElementById('withdrawalsTableBody');
+      tbody.innerHTML = `<tr><td colspan="5">Failed to load withdrawals.</td></tr>`;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadAllWithdrawals);
+
+  async function loadAllDeposits() {
+  try {
+    const res = await fetch('http://localhost:3000/api/admin/deposit-history');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    
+    const { success, deposits } = await res.json();
+    const tbody = document.getElementById('depositsTablebody');
+    tbody.innerHTML = '';
+
+    if (success && deposits.length) {
+      deposits.forEach(deposit => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${deposit.deposit_id}</td>
+          <td>${deposit.user}</td>
+          <td>₱${parseFloat(deposit.amount).toFixed(2)}</td>
+          <td>${deposit.method}</td>
+          <td>${new Date(deposit.date).toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="5">No deposits found.</td></tr>`;
+    }
+
+  } catch (err) {
+    console.error('[❌ Deposit Load Error]', err);
+    const tbody = document.getElementById('depositsTablebody');
+    tbody.innerHTML = `<tr><td colspan="5">Error loading deposits.</td></tr>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadAllDeposits();
+});
+</script>
+
+
+</body>
+</html>

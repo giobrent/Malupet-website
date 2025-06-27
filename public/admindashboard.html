@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="css/dashboard.css" />
+</head>
+<body>
+  <header>
+    <h1>Admin Dashboard</h1>
+  </header>
+
+  <nav>
+    <a href="#">Users</a>
+    <a href="#">Withdrawals</a>
+    <a href="#">Deposits</a>
+    <a href="#">Game Results</a>
+    <a href="#">Reports</a>
+  </nav>
+
+  <main>
+    <section class="dashboard-section">
+      <h2>Total Users</h2>
+      <p>Total Users: <span id="totalUsersCount">Loading...</span></p>
+
+
+      <div style="margin-bottom: 10px;">
+       
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>User ID</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Balance</th>
+              
+            </tr>
+          </thead>
+          <tbody>
+            <tbody id="usersTableBody"></tbody>
+            <!-- User data will go here -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="dashboard-section">
+      <h2>Withdrawal History</h2>
+      <div style="margin-bottom: 10px;">
+        
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Transaction ID</th>
+              <th>User</th>
+              <th>Amount</th>
+              <th>Date</th>
+              <th>Status</th>
+             
+            </tr>
+          </thead>
+            <tbody id="withdrawalsTableBody">
+
+
+            </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="dashboard-section">
+      <h2>Deposit History</h2>
+      <div style="margin-bottom: 10px;">
+        
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Transaction ID</th>
+              <th>User</th>
+              <th>Amount</th>
+              <th>Date</th>
+              <th>Method</th>
+             
+            </tr>
+          </thead>
+          <tbody id="depositHistoryTable">
+
+
+            </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="dashboard-section">
+      <h2>Game Result History</h2>
+      <div style="margin-bottom: 10px;">
+        
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Game</th>
+              <th>Outcome</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="gameHistoryTablebodye">
+
+
+            </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="dashboard-section">
+      <h2>Report History</h2>
+      <div style="margin-bottom: 10px;">
+        
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Report ID</th>
+              <th>Reported By</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+            <tbody id="reportTablebody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+ <script>
+  // Load total users count
+  fetch('http://localhost:3000/api/total-users')
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('totalUsersCount').textContent = data.total_users;
+    })
+    .catch(err => {
+      document.getElementById('totalUsersCount').textContent = 'Error';
+      console.error('Failed to load total users:', err);
+    });
+
+  // Function to load users and render table rows
+  function loadUsers() {
+    fetch('http://localhost:3000/api/users')
+      .then(res => res.json())
+      .then(users => {
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = ''; // Clear existing rows
+
+        users.forEach(user => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${user.id}</td>
+            <td>${user.username}</td>
+            <td>${user.email}</td>
+            <td>${user.balance}</td>
+            
+          `;
+          tbody.appendChild(tr);
+        });
+      })
+      .catch(err => {
+        console.error('Error loading users:', err);
+      });
+  }
+
+  // Call loadUsers initially to populate the table
+  loadUsers();
+
+  // Placeholder Edit user function
+  function editUser(userId) {
+    alert('Edit clicked for user ID: ' + userId);
+    // TODO: Implement edit form/modal or redirect to an edit page
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+  fetch('http://localhost:3000/api/withdrawals')
+    .then(response => response.json())
+    .then(data => {
+      const tbody = document.getElementById('withdrawalsTableBody');
+      tbody.innerHTML = '';
+
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.id}</td>                     <!-- was transaction_id -->
+          <td>${row.username}</td>               <!-- was user -->
+          <td>${parseFloat(row.amount).toFixed(2)}</td>
+          <td>${new Date(row.created_at).toLocaleString()}</td>  <!-- was date -->
+          <td>${row.status}</td>
+          
+        `;
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(err => {
+      console.error('Failed to load withdrawals:', err);
+    });
+});
+
+    fetch('http://localhost:3000/api/deposit-history')
+      .then(res => res.json())
+      .then(data => {
+        console.log('Deposit data:', data); // for debugging
+        const table = document.getElementById('depositHistoryTable');
+        table.innerHTML = '';
+
+        if (data.length === 0) {
+          table.innerHTML = `<tr><td colspan="6">No deposit history found.</td></tr>`;
+          return;
+        }
+
+        data.forEach(deposit => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${deposit.transaction_id}</td>
+            <td>${deposit.user}</td>
+            <td>${deposit.amount}</td>
+            <td>${new Date(deposit.date).toLocaleString()}</td>
+            <td>${deposit.method}</td>
+        
+          `;
+          table.appendChild(row);
+        });
+      })
+      .catch(err => {
+        console.error('Failed to load deposit history:', err);
+        document.getElementById('depositHistoryTable').innerHTML = `
+          <tr><td colspan="6">Error loading data.</td></tr>
+        `;
+      });
+
+    document.addEventListener('DOMContentLoaded', () => {
+    fetch('http://localhost:3000/api/game-history')
+    .then(response => {
+      if (!response.ok) throw new Error("Network response was not ok");
+      return response.json();
+    })
+    .then(data => {
+      const tableBody = document.getElementById('gameHistoryTablebodye');
+      tableBody.innerHTML = '';
+      data.forEach(entry => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${entry.user}</td>
+          <td>${entry.game}</td>
+          <td>${entry.outcome}</td>
+          <td>${new Date(entry.date).toLocaleString()}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    })
+    .catch(error => {
+      console.error('Error fetching game history:', error);
+      alert('Error loading game history.');
+    });
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+  const tbody = document.getElementById('reportTablebody');
+  if (!tbody) {
+    console.error('❌ tbody element with id "reportTablebody" not found in the DOM!');
+    return;
+  }
+
+  fetch('http://localhost:3000/api/report-history')
+    .then(res => res.json())
+    .then(({ success, reports }) => {
+      if (!success || !reports || !Array.isArray(reports)) {
+        tbody.innerHTML = `<tr><td colspan="5">No reports found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = ''; // Clear
+
+      reports.forEach(report => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${report.report_id}</td>
+          <td>${report.reported_by}</td>
+          <td>${report.report_type}</td>
+          <td>${report.description}</td>
+          <td>${new Date(report.report_date).toLocaleString()}</td>
+           <td>
+      <button onclick="deleteReport(${report.report_id})" class="delete-btn">🗑️ Delete</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    })
+    .catch(err => {
+      console.error('Error fetching report history:', err);
+      tbody.innerHTML = `<tr><td colspan="5">Failed to load reports.</td></tr>`;
+    });
+});
+
+
+function deleteReport(reportId) {
+  if (confirm("Are you sure you want to delete this report?")) {
+    fetch(`http://localhost:3000/api/delete-report/${reportId}`, {
+      method: "DELETE"
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Delete failed");
+      return res.json();
+    })
+    .then(data => {
+      alert("Report deleted successfully");
+      const row = document.querySelector(`button[onclick="deleteReport(${reportId})"]`).closest('tr');
+      if (row) row.remove(); // update UI instantly
+    })
+    .catch(err => {
+      console.error("Error deleting report:", err);
+      alert("Failed to delete the report.");
+    });
+  }
+}
+
+
+</script>
+</body>
+</html>

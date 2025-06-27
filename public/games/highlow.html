@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>🔮 High or Low – PALDO</title>
+<style>
+  body {
+    background: #0d0d0d;
+    color: #00ffcc;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; padding: 20px;
+    text-align: center;
+  }
+  header {
+    background: linear-gradient(90deg, #00ffc3, #005f73);
+    padding: 15px 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px #00ffc3;
+    margin-bottom: 40px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 2rem;
+    text-shadow: 0 0 10px #00ffcc;
+  }
+  .balance {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+  }
+  .bet-input {
+    margin-bottom: 20px;
+  }
+  input[type="number"] {
+    padding: 10px;
+    font-size: 1.2rem;
+    width: 140px;
+    border-radius: 10px;
+    border: 2px solid #00ffcc;
+    background: #111;
+    color: #00ffcc;
+    text-align: center;
+    box-shadow: 0 0 8px #00ffcc inset;
+  }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  button {
+    background: #00ffcc;
+    color: #111;
+    font-size: 1.2rem;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 0 15px #00ffcc;
+    transition: all 0.3s ease;
+  }
+  button:hover {
+    background: #00e6b8;
+    box-shadow: 0 0 25px #00ffcc, 0 0 40px #00ffcc;
+  }
+  #guessButtons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .guess-btn {
+    background: #111;
+    border: 2px solid #00ffcc;
+    color: #00ffcc;
+    font-size: 1.2rem;
+    padding: 10px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 0 8px #00ffcc;
+    transition: all 0.3s ease;
+  }
+  .guess-btn:hover {
+    background: #00ffc3;
+    color: #111;
+    box-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc;
+  }
+  .guess-btn.selected {
+    background: #00ffcc;
+    color: #111;
+    box-shadow: 0 0 25px #00ffcc, 0 0 50px #00ffcc;
+  }
+  .message {
+    font-size: 1.5rem;
+    margin-top: 30px;
+    min-height: 2em;
+    color: #00ffcc;
+    text-shadow: 0 0 10px #00ffcc;
+  }
+
+  /* Card flip container */
+  .card-container {
+    perspective: 1000px;
+    width: 120px;
+    height: 160px;
+    margin: 20px auto;
+  }
+  .card {
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.8s;
+    position: relative;
+  }
+  .card.flip {
+    transform: rotateY(180deg);
+  }
+  .face {
+    position: absolute;
+    width: 100%; height: 100%;
+    backface-visibility: hidden;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    box-shadow: 0 0 10px #00ffcc, inset 0 0 8px #00ffcc;
+  }
+  .front {
+    background: #111;
+    color: #00ffcc;
+  }
+  .back {
+    background: #00ffcc;
+    color: #111;
+    transform: rotateY(180deg);
+  }
+  #playAgain {
+    display: none;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+<header><h1>🔮 High or Low</h1></header>
+
+<div class="balance" id="balance">Balance: Loading…</div>
+
+<div class="bet-input">
+  <input id="bet" type="number" placeholder="Bet amount" min="1" />
+</div>
+
+<div class="card-container">
+  <div class="card" id="card">
+    <div class="face front" id="cardFace">?</div>
+    <div class="face back">?</div>
+  </div>
+</div>
+
+<div id="guessButtons">
+  <button class="guess-btn" data-guess="high">High ▲</button>
+  <button class="guess-btn" data-guess="low">Low ▼</button>
+</div>
+
+<audio id="highSound" src="sound/high.mp3" preload="auto"></audio>
+<audio id="lowSound" src="sound/low.mp3" preload="auto"></audio>
+
+<div class="message" id="message">Make your guess!</div>
+<button id="playAgain">Play Again</button>
+
+<script>
+  const userId = localStorage.getItem('userId');
+  if (!userId) {
+    alert('Not logged in.');
+    location.href = 'login.html';
+  }
+
+  const balanceEl = document.getElementById('balance');
+  const betInput   = document.getElementById('bet');
+  const messageEl  = document.getElementById('message');
+  const cardEl     = document.getElementById('card');
+  const cardFace   = document.getElementById('cardFace');
+  const guessBtns  = document.querySelectorAll('.guess-btn');
+  const playAgain  = document.getElementById('playAgain');
+
+  let balance = 0;
+  let current = null;
+  let locked = false;
+
+  async function fetchBalance() {
+    try {
+      const res = await fetch(`http://localhost:3000/api/balance/${userId}`);
+      const data = await res.json();
+      balance = parseFloat(data.balance);
+      balanceEl.textContent = `Balance: $${balance.toFixed(2)}`;
+    } catch {
+      balanceEl.textContent = 'Balance: Error';
+      messageEl.textContent = 'Could not load balance.';
+    }
+  }
+
+  function updateBalance() {
+    balanceEl.textContent = `Balance: $${balance.toFixed(2)}`;
+  }
+
+  function drawCard() {
+    return Math.floor(Math.random()*13)+1; // 1–13
+  }
+
+  function faceLabel(n) {
+    if (n===1) return 'A';
+    if (n===11) return 'J';
+    if (n===12) return 'Q';
+    if (n===13) return 'K';
+    return n;
+  }
+
+  function flipTo(n) {
+    return new Promise(res => {
+      cardEl.classList.add('flip');
+      setTimeout(() => {
+        cardFace.textContent = faceLabel(n);
+        cardEl.classList.remove('flip');
+        setTimeout(res, 300);
+      }, 800);
+    });
+  }
+
+  guessBtns.forEach(btn => btn.addEventListener('click', async () => {
+    if (locked) return;
+    locked = true;
+    messageEl.textContent = '';
+    const bet = parseFloat(betInput.value);
+    if (!bet || bet <= 0) { messageEl.textContent='Enter valid bet.'; locked=false; return; }
+    if (bet > balance) { messageEl.textContent='Insufficient balance.'; locked=false; return; }
+
+    guessBtns.forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+
+    // initial draw
+    if (current === null) {
+      current = drawCard();
+      cardFace.textContent = faceLabel(current);
+    }
+
+    // deduct
+    balance -= bet;
+    updateBalance();
+
+    const guess = btn.dataset.guess;  // "high" or "low"
+    const next  = drawCard();
+    await flipTo(next);
+
+    let outcome, payout=0, lost=0;
+    if (next === current) {
+      outcome='draw'; payout=bet; messageEl.textContent=`Draw! Both ${faceLabel(next)}`;
+    } else {
+      const hi = next>current;
+      if ((guess==='high'&&hi) || (guess==='low'&&!hi)) {
+        outcome='win'; payout=bet*2;
+        messageEl.textContent=`You Win! ${faceLabel(next)} vs ${faceLabel(current)}`;
+      } else {
+        outcome='lose'; lost=bet;
+        messageEl.textContent=`You Lose! ${faceLabel(next)} vs ${faceLabel(current)}`;
+      }
+    }
+    balance += payout; updateBalance();
+
+    // API log
+    try {
+      await fetch('http://localhost:3000/api/game-result', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          user_id: userId,
+          game_name: 'High or Low',
+          result: outcome,
+          amount_won: payout,
+          amount_lost: lost
+        })
+      });
+    } catch(e){
+      console.error(e);
+    }
+
+    current = next;
+    playAgain.style.display = 'inline-block';
+    locked = false;
+  }));
+
+  playAgain.addEventListener('click', () => {
+    guessBtns.forEach(b=>b.classList.remove('selected'));
+    messageEl.textContent = 'Make your guess!';
+    betInput.value = '';
+    playAgain.style.display = 'none';
+  });
+
+  fetchBalance();
+
+  const highSound = document.getElementById("highSound");
+const lowSound = document.getElementById("lowSound");
+
+document.getElementById("guessButtons").addEventListener("click", function (e) {
+  if (e.target.classList.contains("guess-btn")) {
+    const guess = e.target.getAttribute("data-guess");
+
+    if (guess === "high") {
+      highSound.currentTime = 0;
+      highSound.play();
+    } else if (guess === "low") {
+      lowSound.currentTime = 0;
+      lowSound.play();
+    }
+
+   
+    handleGuess(guess);
+  }
+});
+
+</script>
+
+</body>
+</html>

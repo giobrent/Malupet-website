@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Withdraw Funds</title>
+  <link rel="stylesheet" href="css/withdraw.css" />
+  <style>
+   
+    #methodDetails {
+      margin-top: 10px;
+    }
+    #methodDetails label {
+      display: block;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+    #methodDetails input {
+      width: 100%;
+      padding: 8px;
+      font-size: 1em;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Withdraw Funds</h1>
+
+    <label for="withdrawAmount">Amount to Withdraw ($):</label>
+    <input type="number" id="withdrawAmount" min="1" placeholder="Enter amount" />
+
+    <label for="withdrawMethod">Withdrawal Method:</label>
+    <select id="withdrawMethod">
+      <option value="paypal">PayPal</option>
+      <option value="creditcard">Credit Card</option>
+      <option value="gcash">GCash</option>
+    </select>
+
+    <div id="methodDetails"></div>
+
+    <div id="balanceDisplay">Balance: $<span id="balance">Loading...</span></div>
+
+    <button id="withdrawBtn">Withdraw</button>
+
+    <div id="message" class="success-message"></div>
+    <div id="error" class="error-message"></div>
+  </div>
+
+  <script>
+  const userId = localStorage.getItem('userId');
+  const balanceEl = document.getElementById('balance');
+  const amountInput = document.getElementById('withdrawAmount');
+  const methodSelect = document.getElementById('withdrawMethod');
+  const methodDetailsDiv = document.getElementById('methodDetails');
+  const withdrawBtn = document.getElementById('withdrawBtn');
+  const messageEl = document.getElementById('message');
+  const errorEl = document.getElementById('error');
+
+  if (!userId) {
+    alert('User not logged in. Redirecting to login...');
+    window.location.href = 'login.html';
+  }
+
+  function renderMethodDetails() {
+    const method = methodSelect.value;
+    let html = '';
+
+    if (method === 'paypal') {
+      html = `
+        <label for="paypalEmail">PayPal Email:</label>
+        <input type="email" id="paypalEmail" placeholder="Enter your PayPal email" required />
+      `;
+    } else if (method === 'creditcard') {
+      html = `
+        <label for="cardNumber">Card Number:</label>
+        <input type="text" id="cardNumber" maxlength="19" placeholder="1234 5678 9012 3456" required />
+
+        <label for="expiryDate">Expiry Date (MM/YY):</label>
+        <input type="text" id="expiryDate" maxlength="5" placeholder="MM/YY" required />
+
+        <label for="cvv">CVV:</label>
+        <input type="text" id="cvv" maxlength="4" placeholder="123" required />
+      `;
+    } else if (method === 'gcash') {
+      html = `
+        <label for="gcashNumber">GCash Mobile Number:</label>
+        <input type="text" id="gcashNumber" placeholder="e.g. 09123456789" required />
+      `;
+    }
+
+    methodDetailsDiv.innerHTML = html;
+  }
+
+  async function fetchBalance() {
+    try {
+      const res = await fetch(`http://localhost:3000/api/balance/${userId}`);
+      const data = await res.json();
+      balanceEl.textContent = parseFloat(data.balance).toFixed(2);
+    } catch (err) {
+      balanceEl.textContent = 'Error';
+      console.error('Failed to fetch balance:', err);
+    }
+  }
+
+  withdrawBtn.addEventListener('click', async () => {
+    const amount = parseFloat(amountInput.value);
+    const method = methodSelect.value;
+
+    messageEl.textContent = '';
+    errorEl.textContent = '';
+
+    if (isNaN(amount) || amount <= 0) {
+      errorEl.textContent = 'Enter a valid withdrawal amount.';
+      return;
+    }
+
+    // Collect method-specific details
+    let details = {};
+    if (method === 'paypal') {
+      const paypalEmail = document.getElementById('paypalEmail').value.trim();
+      if (!paypalEmail) {
+        errorEl.textContent = 'Please enter your PayPal email.';
+        return;
+      }
+      details.email = paypalEmail;
+    } else if (method === 'creditcard') {
+      const cardNumber = document.getElementById('cardNumber').value.trim();
+      const expiryDate = document.getElementById('expiryDate').value.trim();
+      const cvv = document.getElementById('cvv').value.trim();
+
+      if (!cardNumber || !expiryDate || !cvv) {
+        errorEl.textContent = 'Please fill in all credit card details.';
+        return;
+      }
+      details.cardNumber = cardNumber;
+      details.expiryDate = expiryDate;
+      details.cvv = cvv;
+    } else if (method === 'gcash') {
+      const gcashNumber = document.getElementById('gcashNumber').value.trim();
+      if (!gcashNumber) {
+        errorEl.textContent = 'Please enter your GCash mobile number.';
+        return;
+      }
+      details.mobileNumber = gcashNumber;
+    }
+
+    try {
+      const res = await fetch('http://localhost:3000/api/withdraw', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: userId, amount, withdrawal_method: method, details }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        messageEl.textContent = data.message || 'Withdrawal successful!';
+        // Refresh balance after withdrawal
+        try {
+          await fetchBalance();
+        } catch (fetchErr) {
+          console.error('Error updating balance:', fetchErr);
+        }
+        // Clear inputs
+        amountInput.value = '';
+        methodDetailsDiv.innerHTML = '';
+      } else {
+        errorEl.textContent = data.error || 'Withdrawal failed.';
+      }
+    } catch (err) {
+      errorEl.textContent = 'An error occurred.';
+      console.error(err);
+    }
+  });
+
+  methodSelect.addEventListener('change', renderMethodDetails);
+
+  window.onload = () => {
+    renderMethodDetails();
+    fetchBalance();
+  };
+</script>
+</body>
+</html>

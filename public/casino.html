@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PALDO</title>
+  <link rel="stylesheet" href="css/casino.css" />
+  <!-- ✅ Include Web3.js -->
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+</head>
+
+<body>
+
+  <header>
+    <h1>PALDO</h1>
+  </header>
+
+  <nav>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="crypto/login.html">Play to Earn</a>
+    <a href="deposit.html">Deposit</a>
+    <a href="withdraw.html">Withdraw</a>
+    <a href="about.html">About Us</a>
+    <a href="report.html">Report</a>
+    <a href="login.html" onclick="logout(); return false;">Logout</a>
+  </nav>
+
+  <section class="game-section" id="games">
+
+    <div class="game-card">
+      <a href="games/slot.html" title="Play Slot">
+        <img src="icon/slot.svg" alt="Slot Game" class="game-icon" />
+        <span>Slot</span>
+      </a>
+    </div>
+
+    <div class="game-card">
+      <a href="games/dice.html" title="Play Dice">
+        <img src="icon/dice.svg" alt="Dice Game" class="game-icon" />
+        <span>Dice</span>
+      </a>
+    </div>
+
+    <div class="game-card">
+      <a href="games/coinflip.html" title="Play Coinflip">
+        <img src="icon/coin.svg" alt="Coinflip Game" class="game-icon" />
+        <span>Coinflip</span>
+      </a>
+    </div>
+
+    <div class="game-card">
+      <a href="games/rps.html" title="Play RPS">
+        <img src="icon/roulette.svg" alt="RPS Game" class="game-icon" />
+        <span>RPS</span>
+      </a>
+    </div>
+
+    <div class="game-card">
+      <a href="games/highlow.html" title="Play highlow">
+        <img src="icon/blackjack.svg" alt="highlow Game" class="game-icon" />
+        <span>High & Low</span>
+      </a>
+    </div>
+
+    
+
+  </section>
+
+  <footer>
+    This is The Chance to win! Papaldo ka claim it.
+  </footer>
+
+  <!-- ✅ JS: Web3 Wallet Connect + Logout Logic -->
+  <script>
+    function logout() {
+      localStorage.removeItem('user');
+      alert("Logged out!");
+      window.location.href = 'login.html';
+    }
+
+    // ✅ Wallet Connect Logic
+    let web3;
+    let userAccount;
+
+    async function connectWallet() {
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          web3 = new Web3(window.ethereum);
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const accounts = await web3.eth.getAccounts();
+          userAccount = accounts[0];
+          document.getElementById("walletAddress").innerText = userAccount;
+          console.log("✅ Wallet connected:", userAccount);
+        } catch (err) {
+          alert("Connection rejected.");
+        }
+      } else {
+        alert("MetaMask is not installed. Please install it to use this feature.");
+      }
+    }
+  </script>
+
+</body>
+</html>

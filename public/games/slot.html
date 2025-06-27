@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Slot Game - JJKG E-Casino</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+  body {
+  background: #0d0d0d;
+  color: #00ffcc;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0; 
+  padding: 20px;
+  text-align: center;
+}
+header {
+  background: linear-gradient(90deg, #00ffc3, #005f73);
+  padding: 20px 40px;
+  border-radius: 10px;
+  box-shadow: 0 0 25px #00ffc3;
+  margin-bottom: 50px;
+}
+header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  text-shadow: 0 0 15px #00ffcc;
+}
+.balance {
+  font-size: 2rem;
+  margin-bottom: 25px;
+}
+.bet-input {
+  margin-bottom: 25px;
+}
+input[type="number"] {
+  padding: 15px;
+  font-size: 1.5rem;
+  width: 180px;
+  border-radius: 15px;
+  border: 2px solid #00ffcc;
+  background: #111;
+  color: #00ffcc;
+  text-align: center;
+  box-shadow: 0 0 10px #00ffcc inset;
+  appearance: textfield;
+  -moz-appearance: textfield;
+  -webkit-appearance: none;
+}
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+button {
+  background: #00ffcc;
+  color: #111;
+  font-size: 1.5rem;
+  padding: 16px 32px;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  box-shadow: 0 0 20px #00ffcc;
+  transition: all 0.3s ease;
+}
+button:hover {
+  background: #00e6b8;
+  box-shadow: 0 0 35px #00ffcc, 0 0 60px #00ffcc;
+}
+.slot-machine {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin: 60px 0;
+}
+.reel {
+  width: 180px;       /* much bigger */
+  height: 180px;
+  background: #1e1e1e;
+  border-radius: 20px;
+  box-shadow: 0 0 40px #00ffcc66, 0 0 80px #00ffcc33;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7rem;    /* very large font */
+  color: #00ffcc;
+  text-shadow: 0 0 25px #00ffcc, 0 0 50px #00ffcc;
+  transition: transform 0.3s ease;
+}
+.message {
+  font-size: 2rem;
+  margin-top: 40px;
+  min-height: 2.5em;
+  color: #00ffcc;
+  text-shadow: 0 0 15px #00ffcc;
+}
+
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎰 Slot Game - PALDO</h1>
+</header>
+
+<div class="balance">Balance: $<span id="balance">Loading...</span></div>
+
+<div class="bet-input">
+  <label for="bet">Enter your bet:</label><br />
+  <input type="number" id="bet" min="1" step="1" value="10" />
+</div>
+
+<button id="spinBtn">Spin</button>
+
+<div class="slot-machine" id="slotMachine">
+  <div class="reel" id="reel1">❓</div>
+  <div class="reel" id="reel2">❓</div>
+  <div class="reel" id="reel3">❓</div>
+</div>
+
+<div class="message" id="message"></div>
+
+<audio id="spinSound" src="sound/slot.mp3" preload="auto"></audio>
+
+<script>
+  // Slot symbols — glowing emojis
+  const symbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
+
+  // Elements
+  const balanceEl = document.getElementById('balance');
+  const messageEl = document.getElementById('message');
+  const betInput = document.getElementById('bet');
+  const spinBtn = document.getElementById('spinBtn');
+  const spinSound = document.getElementById('spinSound');
+
+  // Get userId from localStorage
+  const userId = localStorage.getItem('userId');
+  if (!userId) {
+    alert('User not logged in. Redirecting to login...');
+    window.location.href = 'login.html';
+  }
+
+  let balance = 0; // will be updated from backend
+
+  // Update balance display
+  function updateBalanceDisplay() {
+    balanceEl.textContent = balance.toFixed(2);
+  }
+
+  // Fetch balance from backend
+  async function fetchBalance() {
+    try {
+      const res = await fetch(`http://localhost:3000/api/balance/${userId}`);
+      if (!res.ok) throw new Error('Failed to fetch balance');
+      const data = await res.json();
+      balance = parseFloat(data.balance);
+      updateBalanceDisplay();
+    } catch (err) {
+      console.error('Error fetching balance:', err);
+      balanceEl.textContent = 'Error loading';
+      messageEl.textContent = 'Could not load balance.';
+    }
+  }
+
+  function spinReels() {
+    spinSound.currentTime = 0;
+    spinSound.play();
+
+    let bet = parseFloat(betInput.value);
+    if (isNaN(bet) || bet <= 0) {
+      messageEl.textContent = 'Please enter a valid bet amount.';
+      return;
+    }
+    if (bet > balance) {
+      messageEl.textContent = 'Insufficient balance for that bet.';
+      return;
+    }
+
+    // Deduct bet first locally to show immediate UI feedback
+    balance -= bet;
+    updateBalanceDisplay();
+    messageEl.textContent = 'Spinning... Good luck!';
+
+    const reels = [
+      document.getElementById('reel1'),
+      document.getElementById('reel2'),
+      document.getElementById('reel3'),
+    ];
+
+    let spins = 15;
+    let spinCount = 0;
+    const interval = setInterval(() => {
+      reels.forEach(r => {
+        r.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        r.style.transform = `rotate(${Math.random() * 20 - 10}deg) scale(${1 + Math.random() * 0.1})`;
+      });
+      spinCount++;
+      if (spinCount >= spins) {
+        clearInterval(interval);
+        finalizeSpin(reels, bet);
+      }
+    }, 80);
+  }
+
+  async function finalizeSpin(reels, bet) {
+    const results = [
+      symbols[Math.floor(Math.random() * symbols.length)],
+      symbols[Math.floor(Math.random() * symbols.length)],
+      symbols[Math.floor(Math.random() * symbols.length)],
+    ];
+    reels.forEach((r, i) => {
+      r.textContent = results[i];
+      r.style.transform = 'rotate(0deg) scale(1)';
+    });
+
+    let payout = 0;
+    let resultText = '';
+    if (results[0] === results[1] && results[1] === results[2]) {
+      payout = bet * 5;
+      resultText = `🎉 JACKPOT! You won $${payout.toFixed(2)}!`;
+    } else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) {
+      payout = bet * 2;
+      resultText = `Nice! You won $${payout.toFixed(2)}!`;
+    } else {
+      resultText = `Sorry, you lost $${bet.toFixed(2)}. Try again!`;
+    }
+
+    // Calculate amount_won and amount_lost for backend
+    const amount_won = payout;
+    const amount_lost = payout < bet ? bet : 0;
+
+    // Disable spin button while sending result
+    spinBtn.disabled = true;
+    messageEl.textContent = 'Saving result...';
+
+    try {
+      const res = await fetch('http://localhost:3000/api/game-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          game_name: 'slot',
+          result: payout > 0 ? 'win' : 'lose',
+          amount_won: amount_won,
+          amount_lost: amount_lost,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        messageEl.textContent = resultText;
+        // Fetch updated balance from backend to sync UI
+        await fetchBalance();
+      } else {
+        messageEl.textContent = 'Error saving game result.';
+        console.error(data);
+      }
+    } catch (err) {
+      messageEl.textContent = 'Error saving game result.';
+      console.error(err);
+    } finally {
+      spinBtn.disabled = false;
+    }
+  }
+
+  spinBtn.addEventListener('click', spinReels);
+
+  // Fetch balance from backend on page load
+  window.onload = fetchBalance;
+</script>
+
+
+</body>
+</html>
